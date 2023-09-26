@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.26)
-project(untitled C)
+project(RingStruct)
 
-set(CMAKE_C_STANDARD 11)
-
-add_executable(untitled main.c)
+add_subdirectory(MainServer)
+add_subdirectory(Pi)
