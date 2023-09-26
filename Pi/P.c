@@ -69,10 +69,31 @@ void server(){
     char bufferPort[256];
     snprintf(bufferPort, sizeof(bufferPort), "%d", local_port);
 
+/*
     // Envoyez le numéro de port au au serveur principale
     if (send(socket_fd, bufferPort, strlen(bufferPort), 0) == -1) {
         perror("Erreur lors de l'envoi du numéro de port au client");
     }
+*/
+
+    // Envoi de données au serveur principal
+    const char* message = "Message depuis le client UDP.";
+   int bytes_received =sendto(socket_fd, bufferPort, strlen(bufferPort), 0, (struct sockaddr*)&servaddr, client_len);
+    if (bytes_received == -1) {
+        perror("Erreur lors de la réception des données");
+       // break;
+    }
+
+    // Réception de la réponse du serveur
+    bytes_received = recvfrom(socket_fd, buffer, strlen(buffer), 0, NULL, NULL);
+    if (bytes_received == -1) {
+        perror("Erreur lors de la réception de la réponse du serveur");
+        close(sockfd);
+        exit(1);
+    }
+    printf("reponse srv : %s",buffer);
+
+
 
     // Mettez le serveur en mode écoute
     if (listen(sockfd, 5) == -1) {
@@ -82,12 +103,14 @@ void server(){
     }
 
     // Acceptez la connexion entrante
+/*
     new_sockfd = accept(sockfd, (struct sockaddr*)&client_addr, &client_len);
     if (new_sockfd == -1) {
         perror("Erreur lors de l'acceptation de la connexion");
         close(sockfd);
         exit(1);
     }
+*/
 
     // Traitez la connexion
 
@@ -108,7 +131,7 @@ void server(){
 // Fonction pour se connecter au serveur principal
 void connection(int port_utilise) {
     // Création du socket
-    socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (socket_fd == -1) {
         perror("Erreur lors de la création du socket");
         exit(EXIT_FAILURE);
@@ -120,11 +143,13 @@ void connection(int port_utilise) {
     servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
     servaddr.sin_port = htons(port_utilise);
 
+/*
     if (connect(socket_fd, (struct sockaddr*)&servaddr, sizeof(servaddr)) == -1) {
         perror("Erreur lors de la connexion au serveur");
         close(socket_fd);
         exit(EXIT_FAILURE);
     }
+*/
 
     // Obtenir des informations sur le client
     struct sockaddr_in client_addr;
@@ -143,10 +168,23 @@ void connection(int port_utilise) {
     // Réception du message
 
 
+/*
+    // Réception de la réponse du serveur
+    int bytes_received = recvfrom(sockfd, buffer, sizeof(buffer), 0, NULL, NULL);
+    if (bytes_received == -1) {
+        perror("Erreur lors de la réception de la réponse du serveur");
+        close(sockfd);
+        exit(1);
+    }
+
+*/
+
+
+
+
+
 //serveur local
   server();
-
-
 
 
     n = recv(socket_fd, buffer, sizeof(buffer) - 1, 0);
