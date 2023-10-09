@@ -1,7 +1,3 @@
-//
-// Created by dow on 24/09/23.
-//
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,239 +6,170 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-#define PORT_PAR_DEFAUT 4445
+#define PORT_DEFAULT 4445
 
+// Structure definition for InfoProcessus
+typedef struct {
+    int current_id;
+    int neighbor_id;
+    struct sockaddr_in  client_addr;
+} InfoProcessus;
 
-// Définition des variables globales
-int mon_numero = 0;              // Le numéro de ce processus Pconfig
-int socket_fd;                   // Descripteur de fichier du socket pour Pconfig
+int socket_fd;
 
+// Function to configure and create the socket
+void configure_socket(int local_port, int n) {
+    struct sockaddr_in local_address;
+    char buffer_recv_port[1024];
 
-
-// Fonction pour envoyer le port du voisin au client
-void envoyer_port_voisin(int clientfd, int *ports, int n, int mon_numero) {
-    // Vérifier s'il y a au moins deux clients pour envoyer le port du voisin
-    if (n >= 2) {
-        int port_voisin;
-        if (mon_numero == n) {
-            // Si nous sommes le dernier client, le voisin est le premier client
-            port_voisin = ports[0];
-        } else {
-            // Le voisin est le client suivant dans le tableau
-            port_voisin = ports[mon_numero];
-        }
-
-        // Envoyer le port du voisin au client
-        send(clientfd, &port_voisin, sizeof(port_voisin), 0);
-    }
-}
-
-
-
-
-
-
-
-
-// Fonction pour créer et configurer le socket pour Pconfig
-void configurer_socket(int port_local) {
-
-
-    struct sockaddr_in adresse_locale,client_addr;
-    socklen_t client_len = sizeof(client_addr);
-    char buffer[1024];
-
-
-    // Création du socket TCP pour Pconfig
+    // Create a UDP socket
     socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (socket_fd == -1) {
-        perror("Erreur lors de la création du socket pour Pconfig");
+        perror("Error creating socket for Pconfig");
         exit(EXIT_FAILURE);
     }
 
-    // Configuration de l'adresse locale pour Pconfig
+    // Configure local address for Pconfig
+    memset(&local_address, 0, sizeof(local_address));
+    local_address.sin_family = AF_INET;
+    local_address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    local_address.sin_port = htons(local_port);
 
-    memset(&adresse_locale, 0, sizeof(adresse_locale));
-    adresse_locale.sin_family = AF_INET;
-    adresse_locale.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    adresse_locale.sin_port = htons(port_local);
-
-    // Lier le socket à l'adresse locale
-    if (bind(socket_fd, (struct sockaddr*)&adresse_locale, sizeof(adresse_locale)) == -1) {
-        perror("Erreur lors de la liaison du socket à l'adresse locale pour Pconfig");
+    // Bind the socket to the local address
+    if (bind(socket_fd, (struct sockaddr*)&local_address, sizeof(local_address)) == -1) {
+        perror("Error binding socket to local address for Pconfig");
         close(socket_fd);
         exit(EXIT_FAILURE);
     }
-    printf("Serveur démarré avec les paramètres suivants:\n");
-    printf("Adresse IP : %s\n", inet_ntoa(adresse_locale.sin_addr));
-    printf("Port : %d\n", port_local);
 
-    // Mettre le socket en mode écoute
-/*
-    if (listen(socket_fd, 5) == -1) {
-        perror("Erreur lors de la mise en écoute du socket");
-        close(socket_fd);
-        exit(EXIT_FAILURE);
-    }
-    printf("[+]Listening...\n");
-*/
+    printf("Server started with the following settings:\n");
+    printf("IP Address: %s\n", inet_ntoa(local_address.sin_addr));
+    printf("Port: %d\n", local_port);
 
-    printf("Le serveur UDP attend des données...\n");
+    printf("The UDP server is waiting for data...\n");
 
-    while (1) {
-        // Réception des données du client
-        int bytes_received = recvfrom(socket_fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&client_addr, &client_len);
+    InfoProcessus infoProcessus[n];
+    memset(&infoProcessus, 0, sizeof(infoProcessus));
+
+
+    struct  sockaddr_in client_ips[n];
+    socklen_t ClientLen[n]; // Create an array to hold the lengths
+    memset(client_ips, 0, sizeof(client_ips));
+
+
+    struct sockaddr_in client_server_local = {0};
+
+    int i = 0;
+    while (i < n) {
+        socklen_t len = sizeof(client_ips[i].sin_addr);
+        ClientLen[i] = sizeof(client_ips[i]);
+
+
+        size_t bytes_received = recvfrom(socket_fd,
+                                         buffer_recv_port,
+                                         sizeof(buffer_recv_port), 0,
+                                         (struct sockaddr*)&client_ips[i].sin_addr,
+                                          ClientLen);
         if (bytes_received == -1) {
-            perror("Erreur lors de la réception des données");
+            perror("Error receiving data");
             break;
+        } else {
+
+            memcpy(&infoProcessus[i].client_addr, buffer_recv_port, sizeof(struct sockaddr_in));
+
+            printf("Reçuy de %zd bytes \n", bytes_received);
+            char client_ip[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &(infoProcessus[i].client_addr.sin_addr), client_ip, INET_ADDRSTRLEN);
+
+            printf("Connection Info for process %s:%d:\n", client_ip, ntohs(infoProcessus[i].client_addr.sin_port));
+            infoProcessus[i].current_id = i;
+            i++;
         }
 
-
-       char*IP  =inet_ntoa( client_addr.sin_addr);
-        int port_client=ntohs(client_addr.sin_port  );
-
-        // Affichage des données reçues
-        buffer[bytes_received] = '\0';
-        printf("Données reçues du client : %s,%d\n",IP, port_client);
-
-        // Réponse au client
-        const char* response = "Message reçu par le serveur UDP.";
-        sendto(socket_fd, response, strlen(response), 0, (struct sockaddr*)&client_addr, client_len);
     }
 
-    close(socket_fd);
-   // return 0;
+    char buffer_send[sizeof(InfoProcessus)];
+    int voisin =0;
 
-}
 
-// Fonction pour attendre que tous les processus Pi s'inscrivent et configurer l'anneau
-int* inscription_clients(int n ) {
-    printf("Pconfig est en attente des inscriptions des processus Pi...\n");
+    struct sockaddr_in first_infoProcess  = infoProcessus[0].client_addr;
 
-    int *clients = (int *) malloc(n * sizeof(int));
-    int n_clients = 0;
+    for (int j = 0; j < n; ++j) {
+        memset(buffer_send, 0, sizeof(buffer_send));
 
-    while (n_clients < n) {
+        voisin= (j + 1) % n;
+        infoProcessus[j].neighbor_id = voisin;
+        memset(&infoProcessus[j].client_addr, 0,sizeof(infoProcessus[j].client_addr));
 
-        // Acceptation d'une connexion
-        int clientfd = accept(socket_fd, NULL, NULL);
-
-        if (clientfd < 0) {
-            perror("accept");
-            exit(EXIT_FAILURE);
+        if (voisin==0){
+            infoProcessus[n-1].client_addr = first_infoProcess;
+        } else{
+            infoProcessus[j].client_addr = infoProcessus[voisin].client_addr;
         }
-        printf("[+]New connection...\n");
 
 
-        // Affiche les informations
-        struct sockaddr_in client_addr;
-        socklen_t client_addr_len = sizeof(client_addr);
-        getpeername(clientfd, (struct sockaddr *) &client_addr, &client_addr_len);
+      //  infoProcessus[j].client_addr.sin_port = infoProcessus[voisin].client_addr.sin_port;
+      //memcpy(&infoProcessus[j].client_addr, &infoProcessus[voisin].client_addr, sizeof(infoProcessus[voisin].client_addr) );
+
 
         char client_ip[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &(client_addr.sin_addr), client_ip, INET_ADDRSTRLEN);
-        printf("Client connecté depuis : %s:%d\n", client_ip, ntohs(client_addr.sin_port));
+        inet_ntop(AF_INET, &(infoProcessus[j].client_addr.sin_addr), client_ip, INET_ADDRSTRLEN);
+        printf("Verification of the structure sent: process %d, neighbor %d, IP: %s, Port: %d\n",
+               infoProcessus[j].current_id, infoProcessus[j].neighbor_id, client_ip, ntohs(infoProcessus[j].client_addr.sin_port));
 
-        // Ajouter le descripteur de socket du client au tableau
-        // clients[n_clients] = clientfd;
+        memcpy(buffer_send, &infoProcessus[j], sizeof(buffer_send));
 
-        char buffer[256];
-        recv(clientfd, buffer, sizeof(buffer), 0);
-        printf("\nmessage recu :%s\n ", buffer);
-
-        n_clients++;
-
-      //  return clients;
+        ssize_t bytes_sent = sendto(socket_fd, buffer_send,
+                                    sizeof(buffer_send), 0,
+                                    (struct sockaddr*)&client_ips[j].sin_addr, ClientLen[j]);
+        if (bytes_sent == -1) {
+            perror("Error sending data to neighbor");
+            break;
+        } else {
+            printf("Sent %zd bytes to process %d\n", bytes_sent, j);
+        }
     }
 }
 
-/*
-void configuration(int n, int* clients){
 
-    char port_msg[10];
-
-    // Affiche les informations
-    struct sockaddr_in client_addr;
-    socklen_t client_addr_len = sizeof(client_addr);
-
-    char client_ip[INET_ADDRSTRLEN];
-    for (int i = 0; i <n; ++i) {
-        int voisin = (i + 1) % n;// Cas particulier : le dernier client reçoit le port du premier client
-        getpeername(clients[voisin], (struct sockaddr *) &client_addr, &client_addr_len);
-
-        inet_ntop(AF_INET, &(client_addr.sin_addr), client_ip, INET_ADDRSTRLEN); //pour IP besoin future
-        snprintf(port_msg, sizeof(port_msg), "%d", ntohs(client_addr.sin_port));
-
-        send(clients[i], port_msg, strlen(port_msg), 0);
-
-    }
-
-    for (int i = 0; i < n; ++n) {
-        send(clients[i], "EXIT", strlen("EXIT"), 0);
-        close(clients[i]);
-    }
-
+int main(int argc, char *argv[]) {
     close(socket_fd);
-  //  exit(EXIT_SUCCESS);
-   // close(clients[i]);
+    int n = 0;
+    int port = -1;
+    int opt;
 
-   }}
-
-*/
-
-
-    int main(int argc, char *argv[]) {
-        close(socket_fd);
-        int n = 0; //n nombre de processus/ client
-        int port = -1; // Valeur par défaut si l'option -p n'est pas fournie
-        int opt;
-
-        // Utilisation de getopt pour gérer les arguments
-        while ((opt = getopt(argc, argv, "n:p:")) != -1) {
-            switch (opt) {
-                case 'n':
-                    if (sscanf(optarg, "%d", &n) != 1 || n <= 0) {
-                        fprintf(stderr, "Erreur : l'argument de l'option -n doit être un entier positif.\n");
-                        return 1;
-                    }
-                    break;
-                case 'p':
-                    if (sscanf(optarg, "%d", &port) != 1 || port <= 0) {
-                        fprintf(stderr, "Erreur : l'argument de l'option -p doit être un entier positif.\n");
-                        return 1;
-                    }
-                    break;
-                default:
-                    fprintf(stderr, "Utilisation : %s -n <nombre_total_de_processus> [-p <port>]\n", argv[0]);
+    while ((opt = getopt(argc, argv, "n:p:")) != -1) {
+        switch (opt) {
+            case 'n':
+                if (sscanf(optarg, "%d", &n) != 1 || n <= 0) {
+                    fprintf(stderr, "Error: The argument for option -n must be a positive integer.\n");
                     return 1;
-            }
+                }
+                break;
+            case 'p':
+                if (sscanf(optarg, "%d", &port) != 1 || port <= 0) {
+                    fprintf(stderr, "Error: The argument for option -p must be a positive integer.\n");
+                    return 1;
+                }
+                break;
+            default:
+                fprintf(stderr, "Usage: %s -n <total_number_of_processes> [-p <port>]\n", argv[0]);
+                return 1;
         }
-
-        // Vérifier si les valeurs des options ont été initialisées
-        if (n == 0) {
-            fprintf(stderr, "Erreur : l'option -n est obligatoire.\n"
-                            "Utilisation : %s -n <nombre_total_de_processus> [-p <port>]\n", argv[0]);
-            return 1;
-        }
-
-        if (port == -1) {
-            printf("Aucun port spécifié. Utilisation du port par défaut : %d.\n", PORT_PAR_DEFAUT);
-        }
-        int port_utilise = (port == -1) ? PORT_PAR_DEFAUT : port;
-
-        printf("\n *** En Attante de %d connection ***\n\n", n);
-
-        // int* Ports= server(port_utilise,n);
-        // Configuration et création du socket pour Pconfig
-        configurer_socket(port_utilise);
-
-        // Pconfig est prêt à recevoir les inscriptions et à configurer l'anneau
-        int *clients = inscription_clients(n);
-       // configuration(n, clients);
-
-        // Pconfig n'a plus de rôle actif à jouer et peut se terminer
-     //   printf("La configuration de l'anneau est terminée. Pconfig se termine.\n");
-        close(socket_fd);
-
-        return 0;
     }
+
+    if (n == 0) {
+        fprintf(stderr, "Error: The -n option is mandatory.\n"
+                        "Usage: %s -n <total_number_of_processes> [-p <port>]\n", argv[0]);
+        return 1;
+    }
+
+    if (port == -1) {
+        printf("No port specified. Using the default port: %d.\n", PORT_DEFAULT);
+    }
+    int used_port = (port == -1) ? PORT_DEFAULT : port;
+
+    configure_socket(used_port, n);
+
+    return 0;
+}
