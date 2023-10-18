@@ -108,17 +108,12 @@ void configure_socket(int local_port, int n) {
         }
 
 
-      //  infoProcessus[j].client_addr.sin_port = infoProcessus[voisin].client_addr.sin_port;
-      //memcpy(&infoProcessus[j].client_addr, &infoProcessus[voisin].client_addr, sizeof(infoProcessus[voisin].client_addr) );
-
-
         char client_ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &(infoProcessus[j].client_addr.sin_addr), client_ip, INET_ADDRSTRLEN);
         printf("Verification of the structure sent: process %d, neighbor %d, IP: %s, Port: %d\n",
                infoProcessus[j].current_id, infoProcessus[j].neighbor_id, client_ip, ntohs(infoProcessus[j].client_addr.sin_port));
 
         memcpy(buffer_send, &infoProcessus[j], sizeof(buffer_send));
-
         ssize_t bytes_sent = sendto(socket_fd, buffer_send,
                                     sizeof(buffer_send), 0,
                                     (struct sockaddr*)&client_ips[j].sin_addr, ClientLen[j]);

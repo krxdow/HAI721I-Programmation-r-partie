@@ -15,6 +15,11 @@ typedef struct {
     struct sockaddr_in client_addr;
 } InfoProcessus;
 
+typedef struct {
+    int id;
+    int size;
+}Ring_size;
+
 
 extern int id_local;
 extern int socket_fd;
@@ -22,6 +27,7 @@ extern int sockfd_serv_loc;
 extern char buffer[sizeof(struct sockaddr_in)]; // buffer de recpection InfoProcessus voisin
 extern struct sockaddr_in servaddr ,voisin_addr;
 extern socklen_t servaddr_len;
+//extern Ring_size ring_size;
 
 
 int parse_arguments(int,char *[]);
@@ -30,12 +36,12 @@ char* recv_socket_addr();
 void configuration(char *);
 struct sockaddr_in serveur_local();
 int connection(int);
-void connect_neighbor();
+int connect_neighbor();
 int accepte_listen_connection();
 void func(int);
-int send_id(int);
-int recieve_id(int);
-int size_calculator(int);
+int send_id(int,Ring_size );
+Ring_size recieve_id(int);
+//int size_calculator(int);
 
 
 
