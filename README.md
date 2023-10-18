@@ -40,3 +40,8 @@ Ensuite, lancez un processus en exécutant la commande suivante :
 ./p
 ```
 Exécutez cette commande autant de fois que nécessaire pour correspondre aux spécifications de pconfig.
+
+### TODO
+In Pi/p.c
+-[ ] add help option to pass arguments function  
+-[ ] add a system of communication

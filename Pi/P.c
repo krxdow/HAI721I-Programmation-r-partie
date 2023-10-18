@@ -112,5 +112,10 @@ int main(int argc, char *argv[]) {
     printf("Ring size : %d\n", ring_size_send.size);
 
 
+    //TODO: add help option to pass arguments function
+    //TODO: add a system of communication
+
+
+
     return 0;
 }
