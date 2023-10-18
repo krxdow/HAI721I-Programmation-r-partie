@@ -44,5 +44,8 @@ Exécutez cette commande autant de fois que nécessaire pour correspondre aux sp
 ### TODO
 In Pi/p.c  
 
+- [x] Task 1
+- [ ] Task 2
+
 - [ ] add help option to pass arguments function  
 - [ ] add a system of communication  
